@@ -15,10 +15,10 @@
 -->
 
 <resources>
-    <string name="app_name">Bluetooth Chat</string>
+    <string name="app_name">Safe Guard Lock System</string>
 
     <!--  BluetoothChat -->
-    <string name="send">Send</string>
+    <string name="send">Send Public Key to Connected Device</string>
     <string name="not_connected">You are not connected to a device</string>
     <string name="bt_not_enabled_leaving">Bluetooth was not enabled. Leaving Bluetooth Chat.</string>
     <string name="title_connecting">connecting...</string>
@@ -38,4 +38,15 @@
     <string name="secure_connect">Connect a device - Secure</string>
     <string name="insecure_connect">Connect a device - Insecure</string>
     <string name="discoverable">Make discoverable</string>
+    <string name="status">Status: </string>
+    <string name="toggle_on">Unlock</string>
+    <string name="toggle_off">Lock</string>
+    <string name="addUser">Add Key</string>
+    <string name="removeUser">Remove Key</string>
+    <string name="title_username_add_drop">Add/Drop UserName</string>
+    <string name="title_key_add_drop">Add/Drop Key</string>
+    <string name="perm_checkbox">Admin?</string>
+    <string name="ext_user_title">External User Info Obtained:</string>
+    <string name="new_username">User Name: </string>
+    <string name="new_key">Users Key: </string>
 </resources>
