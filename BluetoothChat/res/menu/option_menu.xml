@@ -17,9 +17,9 @@
     <item android:id="@+id/secure_connect_scan"
           android:icon="@android:drawable/ic_menu_search"
           android:title="@string/secure_connect" />
-    <item android:id="@+id/insecure_connect_scan"
+    <item android:id="@+id/disconnect_device"
           android:icon="@android:drawable/ic_menu_search"
-          android:title="@string/insecure_connect" />
+          android:title="@string/disconnect" />
     <item android:id="@+id/discoverable"
           android:icon="@android:drawable/ic_menu_mylocation"
           android:title="@string/discoverable" />

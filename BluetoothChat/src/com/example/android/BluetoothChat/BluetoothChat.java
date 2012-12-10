@@ -16,18 +16,27 @@
 
 package com.example.android.BluetoothChat;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.security.interfaces.DSAKeyPairGenerator;
-import java.security.interfaces.DSAPrivateKey;
-import java.security.interfaces.DSAPublicKey;
-import java.util.Arrays;
+import java.security.Signature;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.security.spec.RSAPrivateKeySpec;
+import java.security.spec.RSAPublicKeySpec;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -53,7 +62,47 @@ import android.widget.ToggleButton;
  */
 public class BluetoothChat extends Activity {
 	
-	boolean SECURE = false;
+	private static byte[] mod = { (byte)0x00,
+		(byte)0x87, (byte)0xE6, (byte)0x72, (byte)0xEA, (byte)0x38, (byte)0x82, (byte)0x3D, (byte)0x8B, 
+		(byte)0xC0, (byte)0x2F, (byte)0x85, (byte)0xBD, (byte)0x1C, (byte)0xF2, (byte)0x31, (byte)0x67, 
+		(byte)0x2E, (byte)0x39, (byte)0x1D, (byte)0x64, (byte)0xC4, (byte)0x53, (byte)0x51, (byte)0x43, 
+		(byte)0x7E, (byte)0x2E, (byte)0xF0, (byte)0x42, (byte)0xA5, (byte)0xE8, (byte)0x3C, (byte)0xAA, 
+		(byte)0x84, (byte)0xA9, (byte)0xC6, (byte)0x97, (byte)0xA6, (byte)0x90, (byte)0xF9, (byte)0x7A, 
+		(byte)0x14, (byte)0x2E, (byte)0xCF, (byte)0xF0, (byte)0x42, (byte)0x49, (byte)0x5A, (byte)0x5F, 
+		(byte)0x60, (byte)0x7E, (byte)0x6E, (byte)0xA2, (byte)0xB3, (byte)0x87, (byte)0xBC, (byte)0x9E, 
+		(byte)0xBD, (byte)0x9D, (byte)0xBF, (byte)0x06, (byte)0x7F, (byte)0x9E, (byte)0x2C, (byte)0x06, 
+		(byte)0x3B, (byte)0x84, (byte)0x4C, (byte)0xDF, (byte)0xEE, (byte)0x33, (byte)0x76, (byte)0x3A, 
+		(byte)0xE2, (byte)0x5E, (byte)0xB3, (byte)0x58, (byte)0x3C, (byte)0x07, (byte)0x4C, (byte)0x88, 
+		(byte)0x7B, (byte)0xA6, (byte)0xBB, (byte)0x2E, (byte)0xDF, (byte)0x25, (byte)0x7B, (byte)0x77, 
+		(byte)0x2B, (byte)0x7D, (byte)0xF1, (byte)0xE0, (byte)0xC2, (byte)0x5D, (byte)0xAD, (byte)0xDE, 
+		(byte)0x7F, (byte)0xD0, (byte)0x34, (byte)0xFD, (byte)0x4F, (byte)0xB0, (byte)0x0D, (byte)0xCA, 
+		(byte)0x69, (byte)0x08, (byte)0xE9, (byte)0x03, (byte)0x0E, (byte)0x15, (byte)0x5F, (byte)0x11, 
+		(byte)0xD2, (byte)0x66, (byte)0x36, (byte)0xD5, (byte)0xCE, (byte)0x70, (byte)0x17, (byte)0x8E, 
+		(byte)0x01, (byte)0xF4, (byte)0x93, (byte)0x36, (byte)0x25, (byte)0xDB, (byte)0xF3, (byte)0x43 };
+
+	private static byte[] privateExp = {
+		(byte)0x0C, (byte)0x57, (byte)0x19, (byte)0xB2, (byte)0x39, (byte)0x05, (byte)0x62, (byte)0x8F, 
+		(byte)0x51, (byte)0x19, (byte)0x3F, (byte)0x9C, (byte)0xA7, (byte)0x87, (byte)0x3A, (byte)0x83, 
+		(byte)0x33, (byte)0x08, (byte)0x4E, (byte)0xA9, (byte)0xFA, (byte)0xC5, (byte)0xD2, (byte)0x08, 
+		(byte)0x3D, (byte)0xEA, (byte)0x07, (byte)0x39, (byte)0x16, (byte)0x15, (byte)0x9B, (byte)0x84, 
+		(byte)0xA4, (byte)0x5D, (byte)0x42, (byte)0x42, (byte)0x3D, (byte)0x06, (byte)0xC7, (byte)0x10, 
+		(byte)0x95, (byte)0xCA, (byte)0x96, (byte)0x69, (byte)0x2B, (byte)0xAB, (byte)0xBB, (byte)0x80, 
+		(byte)0x13, (byte)0xA4, (byte)0x07, (byte)0x69, (byte)0xD0, (byte)0xC1, (byte)0x8F, (byte)0x98, 
+		(byte)0x1E, (byte)0x81, (byte)0xB7, (byte)0x79, (byte)0xE0, (byte)0x96, (byte)0xBD, (byte)0x4A, 
+		(byte)0x85, (byte)0x9C, (byte)0xE2, (byte)0x92, (byte)0x89, (byte)0x09, (byte)0xFB, (byte)0x54, 
+		(byte)0x13, (byte)0x5B, (byte)0x5F, (byte)0x3B, (byte)0x3D, (byte)0x03, (byte)0xA7, (byte)0x12, 
+		(byte)0x86, (byte)0xA9, (byte)0x67, (byte)0xDB, (byte)0x2A, (byte)0x0C, (byte)0x36, (byte)0x2C, 
+		(byte)0x8D, (byte)0xBB, (byte)0xA0, (byte)0xCB, (byte)0xE9, (byte)0x18, (byte)0x4C, (byte)0xC3, 
+		(byte)0xC0, (byte)0xAD, (byte)0x45, (byte)0xCC, (byte)0x88, (byte)0xC8, (byte)0x76, (byte)0x78, 
+		(byte)0x1C, (byte)0x58, (byte)0xAD, (byte)0xD7, (byte)0xCA, (byte)0x17, (byte)0xFB, (byte)0x82, 
+		(byte)0x9A, (byte)0xC9, (byte)0xB1, (byte)0x4E, (byte)0xF9, (byte)0xC8, (byte)0x9A, (byte)0x62, 
+		(byte)0x2A, (byte)0x30, (byte)0xBB, (byte)0xAF, (byte)0xCB, (byte)0xB9, (byte)0xB9, (byte)0x01 };
+
+	private static byte[] publicExp = { (byte)0x01, (byte)0x00, (byte)0x01 };
+	
+	boolean SECURE = true;
+	boolean GENERATE_KEYS = true;
+	boolean USE_ADMIN_NAME = false;
 	
     // Debugging
     private static final String TAG = "BluetoothChat";
@@ -70,6 +119,7 @@ public class BluetoothChat extends Activity {
     public static final String DEVICE_NAME = "device_name";
     public static final String TOAST = "toast";
     
+    private boolean UserNameProvided = false;
     // Name of the file with stored user data
     public static final String FILE_NAME = "user_data";
     // User name
@@ -79,15 +129,13 @@ public class BluetoothChat extends Activity {
     
     private static KeyPair keys = null;
     // User public key
-    public static DSAPublicKey publicKey = null;
+    public static RSAPublicKey publicKey = null;
     // User private key
-    public static DSAPrivateKey privateKey = null;
-    
-    public static final int KEY_LENGTH = 512;
+    public static RSAPrivateKey privateKey = null;
 
     // Intent request codes
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
-    private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
+    //private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
     private static final int REQUEST_ENABLE_BT = 3;
 
     // Layout Views
@@ -96,35 +144,40 @@ public class BluetoothChat extends Activity {
     private ToggleButton mLockToggle;
     private Button mAddUser;
     private Button mRemoveUser;
-    //private ListView mConversationView;
-    //private EditText mOutEditText;
     private Button mSendButton;
     private CheckBox mAdminCheckBox;
     private TextView mAddRemoveUserText;
     private TextView mAddRemoveKeyText;
+    private Button mUserButton;
+    private EditText mUsernameText;
+    private TextView mUsernameView;
 
     // Name of the connected device
     private String mConnectedDeviceName = null;
     // Array adapter for the conversation thread
     //private ArrayAdapter<String> mConversationArrayAdapter;
     // String buffer for outgoing messages
-    private StringBuffer mOutStringBuffer;
+    //private StringBuffer mOutStringBuffer;
     // Local Bluetooth adapter
     private BluetoothAdapter mBluetoothAdapter = null;
     // Member object for the chat services
     private BluetoothChatService mChatService = null;
     
+    public static final int KEY_LENGTH = 1032; 		// in bits
+    public static final int PUB_EXP_LENGTH = 3;		// in bytes
+    public static final int PRIV_EXP_LENGTH = 1024;	// in bits
     // Command Buffer for args from lock system
-    byte[] cmdBuffer = new byte[512];
+    byte[] cmdBuffer = new byte[2*KEY_LENGTH];
     int cmdIndex = 0;
     
     // Store new user add/drop key
-    byte[] extUserKey = new byte[192];
+    byte[] extUserKey = new byte[KEY_LENGTH/8];
     String extUserName = "";
     boolean extUserObtained = false;
     
+    private static final int RAND_NUM_LENGTH = 64;	// bytes
     // Store the random number given at the start of the session
-    long randNum = -1;
+    byte[] randNum = new byte[RAND_NUM_LENGTH];
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -187,38 +240,40 @@ public class BluetoothChat extends Activity {
 
     private void setupChat() {
         Log.d(TAG, "setupChat()");
-
-        // Initialize the array adapter for the conversation thread
-        //mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
-        //mConversationView = (ListView) findViewById(R.id.in);
-        //mConversationView.setAdapter(mConversationArrayAdapter);
-
-        // Initialize the compose field with a listener for the return key
-        //mOutEditText = (EditText) findViewById(R.id.edit_text_out);
-        //mOutEditText.setOnEditorActionListener(mWriteListener);
+        
+        // Initialize the submit user button form
+        mUserButton = (Button) findViewById(R.id.submit_username);
+        mUsernameText = (EditText) findViewById(R.id.enter_username);
+        mUsernameView = (TextView) findViewById(R.id.enter_username);
+        mUserButton.setOnClickListener(new OnClickListener() {
+        	public void onClick(View v) {
+        		SetUsername();
+            }
+        });
+        
 
         // Initialize the send button with a listener that for click events
         mSendButton = (Button) findViewById(R.id.button_send);
         mSendButton.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
-                // Send a message using content of the edit text widget
-                // TextView view = (TextView) findViewById(R.id.edit_text_out);
-                // String message = view.getText().toString();
             	
-            	//String key = new String(publicKey);
             	String pre = "<KEY_EXCHANGE:" + userName + ":";
             	byte[] preBytes = pre.getBytes();
-            	byte[] send = Arrays.copyOf(preBytes, 192 + pre.getBytes().length + 1);
-            	System.arraycopy(extUserKey, 0, send, preBytes.length, extUserKey.length);
+            	byte[] pubMod = publicKey.getModulus().toByteArray();
+            	byte[] send = new byte[preBytes.length + KEY_LENGTH/8 + 1];
+            	System.arraycopy(preBytes, 0, send, 0, preBytes.length);
+            	System.arraycopy(pubMod, 0, send, preBytes.length, pubMod.length);
             	send[send.length - 1] = (byte)'>';
 
+            	//byte[] test = new byte[];
+            	
             	sendByteArrayMessage(send);
             }
         });
         
         // Initialize the status 
         mStatus = (TextView) findViewById(R.id.status);
-        mStatus.setText("Status: Waiting For Connection...");
+        //mStatus.setText("Status: Waiting For Connection...");
         
         // Initialize the Lock toggle button and add listener for click events
         mLockToggle = (ToggleButton) findViewById(R.id.lock_toggle);
@@ -252,56 +307,131 @@ public class BluetoothChat extends Activity {
         mAddRemoveUserText = (TextView) findViewById(R.id.username_add_drop);
         mAddRemoveKeyText = (TextView) findViewById(R.id.key_add_drop);
         
-        // Get all the stored user information from the stored file
-        /*
-        try {
-        	FileInputStream fis = openFileInput(FILE_NAME);
-        	byte[] buffer = new byte[512];
-        	int bytes = fis.read(buffer, 0, 512);
-        	String userInfo = new String(buffer, 0, bytes);
-        	String[] userToks = userInfo.split(":");
-        	userName = userToks[0];
-        	userPW = userToks[1];
-        	publicKey = Integer.parseInt(userToks[2]);
-        	privateKey = Integer.parseInt(userToks[3]);
-        	fis.close();
+        if (GENERATE_KEYS) {
         	
-        } catch (Exception ex) {
-        	// File was not found so generate keys
-        	try {
-        		FileOutputStream fos = openFileOutput(FILE_NAME, MODE_PRIVATE);
-        		GenerateKeys();
-        		String user = userName + ":" + userPW + ":" + publicKey + ":" + privateKey;
-        		fos.write(user.getBytes(), 0, user.getBytes().length);
-        		fos.close();
-        		
-        	} catch (Exception ex) {
-        		// Should ot reach this point b/c it creates file if not found
-        	}
+        	// Check to see if we currently have a file to read from
+        	File modFile = new File("/data/data/com.example.android.BluetoothChat/files/modulous");
+    	    byte[] modBytes = new byte[KEY_LENGTH/8];
+    	    
+    	    File pubExpFile = new File("/data/data/com.example.android.BluetoothChat/files/publicExp");
+    	    byte[] pubExpBytes = new byte[PUB_EXP_LENGTH];
+    	    
+    	    File privExpFile = new File("/data/data/com.example.android.BluetoothChat/files/privateExp");
+    	    byte[] privExpBytes = new byte[PRIV_EXP_LENGTH/8];
+    	    try {
+    	    	// Get the parameters from the stored files
+    	        BufferedInputStream modBuf = new BufferedInputStream(new FileInputStream(modFile));
+    	        modBuf.read(modBytes, 0, modBytes.length);
+    	        modBuf.close();
+    	        
+    	        BufferedInputStream pubBuf = new BufferedInputStream(new FileInputStream(pubExpFile));
+    	        pubBuf.read(pubExpBytes, 0, pubExpBytes.length);
+    	        pubBuf.close();
+    	        
+    	        BufferedInputStream privBuf = new BufferedInputStream(new FileInputStream(privExpFile));
+    	        privBuf.read(privExpBytes, 0, privExpBytes.length);
+    	        privBuf.close();
+    	        
+		    	// Construct keys
+				KeyFactory keyMaker = KeyFactory.getInstance("RSA");
+		        RSAPublicKeySpec pubKeySpec = new RSAPublicKeySpec(new BigInteger(modBytes), new BigInteger(pubExpBytes));
+		        publicKey = (RSAPublicKey)keyMaker.generatePublic(pubKeySpec);
+				RSAPrivateKeySpec privKeySpec = new RSAPrivateKeySpec(new BigInteger(modBytes), new BigInteger(privExpBytes));
+				privateKey = (RSAPrivateKey)keyMaker.generatePrivate(privKeySpec);
+    	        
+    	    } catch (FileNotFoundException e) {
+    	        // this means the keys haven't been generated yet, so generate and store them in files
+    	    	GenerateKeys();
+    	    	try {
+        		    FileOutputStream modOS = openFileOutput("modulous", Context.MODE_PRIVATE);
+        		    modOS.write(privateKey.getModulus().toByteArray());
+        		    modOS.close();
+        		    
+        		    FileOutputStream pubOS = openFileOutput("publicExp", Context.MODE_PRIVATE);
+        		    pubOS.write(publicKey.getPublicExponent().toByteArray());
+        		    pubOS.close();
+        		    
+        		    FileOutputStream privOS = openFileOutput("privateExp", Context.MODE_PRIVATE);
+        		    privOS.write(privateKey.getPrivateExponent().toByteArray());
+        		    privOS.close();
+        		} catch (Exception e1) {
+        		    e1.printStackTrace();
+        		}
+    	    	
+    	    } catch (IOException e) {
+    	        // TODO Auto-generated catch block
+    	        e.printStackTrace();
+    	        //mStatus.setText("Status: Bad Things");
+    	    } catch (Exception ex) {
+    	    	//mStatus.setText("Status: Bad Things");
+    	    }
+        	
+        } else {
+        	ConstructHardKeys();
         }
-        */
-        
-        GenerateKeys();
 
         // Initialize the BluetoothChatService to perform bluetooth connections
         mChatService = new BluetoothChatService(this, mHandler);
 
         // Initialize the buffer for outgoing messages
-        mOutStringBuffer = new StringBuffer("");
+        //mOutStringBuffer = new StringBuffer("");
+        
+        if (USE_ADMIN_NAME) {
+        	userName = "Default Admin";
+        	mUsernameView.setText("Default Admin");
+        	mUsernameView.setEnabled(false);
+	        mUserButton.setEnabled(false);
+        } else {
+	        //GetUsername();
+	        try {
+		    	File usernameFile = new File("/data/data/com.example.android.BluetoothChat/files/userName");
+		    	int length = (int)usernameFile.length();
+			    byte[] userBytes = new byte[length];
+		    
+		    	// Get the parameters from the stored files
+		        BufferedInputStream userBuf = new BufferedInputStream(new FileInputStream(usernameFile));
+		        userBuf.read(userBytes, 0, userBytes.length);
+		        userBuf.close();
+		        
+		        userName = new String(userBytes);
+		        UserNameProvided = true;
+		        mUsernameView.setText(userName);
+		        mUsernameView.setEnabled(false);
+		        mUserButton.setEnabled(false);
+		    } catch (FileNotFoundException e) {
+		    	// Username has not been aquired
+		    	//mStatus.setText("Status: Provide a Username!!");
+		    	
+		    } catch (Exception ex) {
+		    	
+		    }
+        }
+    }
+    
+    private void SetUsername() {
+    	String newUsername = mUsernameView.getText().toString();
+    	if (newUsername.length() > 0) {
+	    	try {
+		    	FileOutputStream userOS = openFileOutput("userName", Context.MODE_PRIVATE);
+		    	userOS.write(newUsername.getBytes());
+		    	userOS.close();
+		    	
+		    	userName = newUsername;
+		    	UserNameProvided = true;
+		    	mUsernameView.setEnabled(false);
+		    	mUserButton.setEnabled(false);
+	    	} catch (Exception ex) {
+	    		
+	    	}
+    	}
     }
     
     private void SendAddRemoveCmd(String cmd) {
-		//String name = mAddRemoveUserText.getText().toString();
-		//String key = mAddRemoveKeyText.getText().toString();
 		if (extUserObtained) {
-			String numStr = "" + randNum;
-			int size = cmd.getBytes().length +1+ userName.getBytes().length +1+ extUserName.getBytes().length +1+ extUserKey.length +1+ numStr.getBytes().length;
-			if (cmd.equals("ADD"))
-				size += 3;
+			int size = cmd.getBytes().length +1+ userName.getBytes().length +1+ extUserName.getBytes().length +1+ extUserKey.length +1+ randNum.length;
+			if (cmd.equals("ADD")) size += 2;
 			byte[] encrypt = new byte[size];
-			byte perms = 0x01;
-			if (mAdminCheckBox.isChecked())
-				perms = 0x03;
+			byte perms = (mAdminCheckBox.isChecked()) ? ((byte)0x03) : ((byte)0x01);
 			
 			String pre = cmd + ":" + userName + ":" + extUserName + ":";
 			System.arraycopy(pre.getBytes(), 0, encrypt, 0, pre.getBytes().length);
@@ -314,71 +444,84 @@ public class BluetoothChat extends Activity {
 				encrypt[current+1] = (byte)':';
 				current += 2;
 			}
-			System.arraycopy(numStr.getBytes(), 0, encrypt, current, numStr.getBytes().length);
+			System.arraycopy(randNum, 0, encrypt, current, randNum.length);
 			
-			byte[] end = new byte[numStr.getBytes().length];
-			System.arraycopy(numStr.getBytes(), 0, end, 0, numStr.getBytes().length);
-			if (SECURE)
-				end = HashAndEncrypt(encrypt);
-			byte[] send = new byte[1 + encrypt.length + 1 + end.length + 1];
+			byte[] sig = HashAndEncrypt(encrypt);
+			byte[] send = new byte[1 + encrypt.length + 1 + sig.length + 1];
 			send[0] = (byte)'<';
 			System.arraycopy(encrypt, 0, send, 1, encrypt.length);
-			send[encrypt.length + 1] = (byte)'>';
-			System.arraycopy(end, 0, send, encrypt.length + 2, end.length);
+			send[encrypt.length + 1] = (byte)':';
+			System.arraycopy(sig, 0, send, encrypt.length + 2, sig.length);
 			send[send.length - 1] = (byte)'>';
 			
 			sendByteArrayMessage(send);
 			
-			mAddRemoveUserText.setText("User Name: ");
-			mAddRemoveKeyText.setText("User's Key: ");
-			extUserObtained = false;
+			//mAddRemoveUserText.setText("User Name: ");
+			//mAddRemoveKeyText.setText("User's Key: ");
+			//extUserObtained = false;
 		}
     }
     
-    // Generate a new Public Key for the user
+    // Generate a new Public and Private Key for the user
     private void GenerateKeys() {
     	try {
-    		DSAKeyPairGenerator gen = (DSAKeyPairGenerator)KeyPairGenerator.getInstance("DSA");
-    		gen.initialize(KEY_LENGTH, false, new SecureRandom());
-    		keys = ((KeyPairGenerator)gen).generateKeyPair();
-    		publicKey = (DSAPublicKey)keys.getPublic();
-    		privateKey = (DSAPrivateKey)keys.getPrivate();
-    		
+    		//generate the RSA keys
+    		KeyPairGenerator gen = KeyPairGenerator.getInstance("RSA");
+    		gen.initialize(KEY_LENGTH, new SecureRandom());
+    		keys = gen.generateKeyPair();
+    		publicKey = (RSAPublicKey)keys.getPublic();
+    		privateKey = (RSAPrivateKey)keys.getPrivate();
     	} catch (Exception ex) {
     		// No such algorithm exception
+    	}
+    }
+    
+    private void ConstructHardKeys() {
+    	try {
+	    	// Construct keys
+			KeyFactory keyMaker = KeyFactory.getInstance("RSA");
+	        RSAPublicKeySpec pubKeySpec = new RSAPublicKeySpec(new BigInteger(mod), new BigInteger(publicExp));
+	        publicKey = (RSAPublicKey)keyMaker.generatePublic(pubKeySpec);
+			RSAPrivateKeySpec privKeySpec = new RSAPrivateKeySpec(new BigInteger(mod), new BigInteger(privateExp));
+			privateKey = (RSAPrivateKey)keyMaker.generatePrivate(privKeySpec);
+    	} catch (Exception ex) {
+    		
     	}
     }
     
     // Send the lock command to the locking system
     private void SendLockCommand(String cmd) {
     	if (mChatService.getState() == BluetoothChatService.STATE_CONNECTED) {
-    		String info = cmd + ":" + userName + ":" + randNum;
-    		byte[] encryptInfo = info.getBytes();
-    		byte[] encrypt = ("" + randNum).getBytes();
-    		if (SECURE)
-    			encrypt = HashAndEncrypt(encryptInfo);
-    		String encypt = new String(encrypt);
-    		String send = "<" + info + ":" + encypt + ">";
+    		String info = cmd + ":" + userName + ":";
+    		byte[] infoBytes = info.getBytes();
+    		byte[] encryptInfo = new byte[infoBytes.length + RAND_NUM_LENGTH];
+    		System.arraycopy(infoBytes, 0, encryptInfo, 0, infoBytes.length);
+    		System.arraycopy(randNum, 0, encryptInfo, infoBytes.length, RAND_NUM_LENGTH);
     		
-    		sendByteArrayMessage(send.getBytes());
+    		byte[] encrypt = HashAndEncrypt(encryptInfo);
+    		
+    		byte[] send = new byte[1+encryptInfo.length+1+encrypt.length+1];
+    		send[0] = (byte)'<';
+    		System.arraycopy(encryptInfo, 0, send, 1, encryptInfo.length);
+    		send[1+encryptInfo.length] = (byte)':';
+    		System.arraycopy(encrypt, 0, send, 1+encryptInfo.length+1, encrypt.length);
+    		send[send.length-1] = (byte)'>';
+    		
+    		sendByteArrayMessage(send);
     	}
     }
     
     // Hash and encrypt the string, returning the result
     private byte[] HashAndEncrypt(byte[] str) {
     	try {
-	    	// First hash the message using java's message digest class
-	    	MessageDigest hash = MessageDigest.getInstance("SHA-1");
-	    	hash.reset();
-	    	hash.update(str);
-	    	return hash.digest();
+    		// sign the message using SHA-1 hash and RSA
+    		Signature instance = Signature.getInstance("SHA1withRSA");
+    		instance.initSign(privateKey);
+    		instance.update(str);
+    		return instance.sign();
     	} catch (Exception ex) {
     		// No such algorithm exists
     	}
-    	
-    	// Next sign the hashed message using the private key
-    	
-    	// Ask David if I should sign or encrypt
     	return new byte[10];
     }
 
@@ -459,20 +602,17 @@ public class BluetoothChat extends Activity {
                 case BluetoothChatService.STATE_CONNECTED:
                     mTitle.setText(R.string.title_connected_to);
                     mTitle.append(mConnectedDeviceName);
-                    mLockToggle.setEnabled(true);
-                    mStatus.setText("Status: Connected");
-                    //mConversationArrayAdapter.clear();
+                    GoToConnectedState();
                     break;
                 case BluetoothChatService.STATE_CONNECTING:
                     mTitle.setText(R.string.title_connecting);
                     mLockToggle.setEnabled(false);
-                    mStatus.setText("Status: Waiting For Connection...");
+                    mStatus.setText("Status: Connecting to Lock");
                     break;
                 case BluetoothChatService.STATE_LISTEN:
                 case BluetoothChatService.STATE_NONE:
                     mTitle.setText(R.string.title_not_connected);
-                    mLockToggle.setEnabled(false);
-                    mStatus.setText("Status: Waiting For Connection...");
+                    GoToDisconnectState();
                     break;
                 }
                 break;
@@ -484,14 +624,10 @@ public class BluetoothChat extends Activity {
                 break;
             case MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
-                // construct a string from the valid bytes in the buffer
-                String readMessage = new String(readBuf, 0, msg.arg1);
-                //mStatus.setText(readMessage);
-                //mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
-                
-                
-                CopyBuffer(readBuf, msg.arg1);
                 synchronized (cmdBuffer){
+                	System.arraycopy(readBuf, 0, cmdBuffer, cmdIndex, msg.arg1);
+                	cmdIndex += msg.arg1;
+                	
                 	if (cmdBuffer[cmdIndex - 1] == (byte)('>')) {
                 		//mStatus.setText("Parsing Command");
                 		ParseCommand();
@@ -514,21 +650,62 @@ public class BluetoothChat extends Activity {
         }
     };
     
+    public void GoToConnectedState() {
+    	mLockToggle.setEnabled(true);
+        mAddUser.setEnabled(true);
+        mRemoveUser.setEnabled(true);
+        mSendButton.setEnabled(true);
+        mStatus.setText("Status: Connected to Lock");
+    }
+    
+    public void GoToDisconnectState() {
+    	mLockToggle.setEnabled(false);
+        mStatus.setText("Status: Waiting For Connection...");
+        mAddUser.setEnabled(false);
+        mRemoveUser.setEnabled(false);
+        mSendButton.setEnabled(false);
+    }
+    
     public void ParseCommand() {
     	String msg = new String(cmdBuffer, 1, cmdIndex-2);
     	String[] tokens = msg.split(":");
     	
     	if (tokens[0].equals("BEGINACK")) {
+    		// Update the status to the user
+    		if (tokens[1].equals("LOCKED")) {
+    			mStatus.setText("Status: System is Locked");
+    			mLockToggle.setChecked(true);
+    		} else if (tokens[1].equals("UNLOCKED")) {
+    			mStatus.setText("Status: System is Unlocked");
+    			mLockToggle.setChecked(false);
+    		}
     		// Save the random number for future use
-    		randNum = Long.parseLong(tokens[1]);
+    		try {
+    			System.arraycopy(cmdBuffer, cmdIndex - 1 - RAND_NUM_LENGTH, randNum, 0, RAND_NUM_LENGTH);
+    		} catch (Exception ex) {
+    			
+    		}
+    	
+    	} else if (tokens[0].equals("BEGIN")) {
+    		
+    		mLockToggle.setEnabled(false);
+            mAddUser.setEnabled(false);
+            mRemoveUser.setEnabled(false);
+            mSendButton.setEnabled(true);
     		
     	} else if (tokens[0].equals("STATUS")) {
     		// Update the status to the user
-    		mStatus.setText("Status: " + tokens[1]);
     		if (tokens[1].equals("LOCKED")) {
+    			mStatus.setText("Status: System is Locked");
     			mLockToggle.setChecked(true);
-    		} else {
+    		} else if (tokens[1].equals("LOCKED")) {
+    			mStatus.setText("Status: System is Unlocked");
     			mLockToggle.setChecked(false);
+    		} else if (tokens[1].equals("ADD_SUCCESS")) {
+    			mStatus.setText("Status: Key Add was Successful");
+    		
+    		} else if (tokens[1].equals("ADD_FAILED")) {
+    			mStatus.setText("Status: Key Add was Unsuccessful");
     		}
     		
     	} else if (tokens[0].equals("KEY_EXCHANGE")) {
@@ -536,7 +713,7 @@ public class BluetoothChat extends Activity {
     		mAddRemoveUserText.setText("User Name: " + tokens[1]);
     		mAddRemoveKeyText.setText("User's Key: Loaded");
     		extUserName = tokens[1];
-    		extUserKey = Arrays.copyOfRange(cmdBuffer, cmdIndex-1-192, cmdIndex-1);
+    		System.arraycopy(cmdBuffer, cmdIndex-1-(KEY_LENGTH/8), extUserKey, 0, KEY_LENGTH/8);
     		extUserObtained = true;
     		
     	} else {
@@ -545,15 +722,6 @@ public class BluetoothChat extends Activity {
     	
     	// Reset the index of the command buffer
     	cmdIndex = 0;
-    }
-    
-    public void CopyBuffer(byte[] readBuffer, int length) {
-    	synchronized (cmdBuffer){
-	    	for (int j = 0; j < length; j++) {
-	    		cmdBuffer[cmdIndex + j] = readBuffer[j];
-	    	}
-	    	cmdIndex += length;
-    	}
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -565,12 +733,14 @@ public class BluetoothChat extends Activity {
                 connectDevice(data, true);
             }
             break;
+            /*
         case REQUEST_CONNECT_DEVICE_INSECURE:
             // When DeviceListActivity returns with a device to connect
             if (resultCode == Activity.RESULT_OK) {
                 connectDevice(data, false);
             }
             break;
+            */
         case REQUEST_ENABLE_BT:
             // When the request to enable Bluetooth returns
             if (resultCode == Activity.RESULT_OK) {
@@ -611,10 +781,14 @@ public class BluetoothChat extends Activity {
             serverIntent = new Intent(this, DeviceListActivity.class);
             startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
             return true;
-        case R.id.insecure_connect_scan:
+        case R.id.disconnect_device:
             // Launch the DeviceListActivity to see devices and do scan
-            serverIntent = new Intent(this, DeviceListActivity.class);
-            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
+            //serverIntent = new Intent(this, DeviceListActivity.class);
+            //startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
+        	
+        	//disconnect from the current device
+        	// mChatService.stop();
+        	mChatService.start();
             return true;
         case R.id.discoverable:
             // Ensure this device is discoverable by others
